@@ -1,0 +1,18 @@
+# Development stage (hot reload)
+FROM node:18
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y npm
+
+COPY /frontend/package.json /frontend/package-lock.json* ./
+
+RUN npm install
+
+COPY . .
+
+RUN npm run build
+
+EXPOSE 3000
+
+CMD ["npm", "start"]

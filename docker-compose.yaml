@@ -1,0 +1,89 @@
+
+services:
+  db:
+    image: postgres:15-bullseye
+    container_name: prisma_postgres
+    environment:
+      POSTGRES_USER: postgres-fapi
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: prisma_db
+    # Listen on port 5433 inside the container
+    command: ["postgres", "-p", "5433"]
+    ports:
+      - "5433:5433"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  prisma:
+    image: node:18-slim
+    container_name: prisma_migration
+    working_dir: /app
+    volumes:
+      - ./backend/prisma:/app/prisma
+      - ./backend:/app/backend
+    command: >
+      sh -c "
+      apt-get update &&
+      apt-get install -y npm &&
+      apt install python3.11-venv -y &&
+      apt-get install -y python3 python3-pip openssl &&
+      python3 -m venv /app/venv &&
+      . /app/venv/bin/activate &&
+      pip install prisma &&
+      if ! command -v prisma > /dev/null 2>&1; then
+          npm install -g prisma
+      fi &&
+      prisma generate --schema=/app/prisma/schema/schema.prisma &&
+      prisma db push --schema=/app/prisma/schema/schema.prisma
+      "
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+  backend:
+    build:
+      context: ./backend
+    container_name: prisma_backend
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - prisma
+    volumes:
+      - ./backend:/app/backend  # Only mount the app directory for live reload
+      - ./backend/prisma:/app/prisma  # Mount the prisma directory
+    networks:
+      - shared-network
+    command: >
+      sh -c "
+      prisma generate --schema=$PRISMA_SCHEMA_PATH &&
+      uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+  # frontend:
+  #   build: ./frontend
+  #   container_name: frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - backend
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /frontend/node_modules  # Preserve dependencies
+  #   networks:
+  #     - shared-network
+  #   command: npm start
+
+
+#add weaviate?
+
+
+volumes:
+  postgres_data:
+
+networks:
+  shared-network:
+    external: true

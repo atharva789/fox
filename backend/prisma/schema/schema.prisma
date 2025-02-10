@@ -1,0 +1,65 @@
+generator client {
+  provider        = "prisma-client-py"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+model Student {
+  id     Int      @id @default(autoincrement())
+  apiKey String   @unique
+  Course Course[]
+}
+
+model Course {
+  id          Int           @id @default(autoincrement())
+  name        String
+  code        String
+  StudentID   Int
+  student     Student       @relation(fields: [StudentID], references: [id])
+  Module      Module[]
+  Assignments Assignments[]
+  StudyGuide  StudyGuide[]
+}
+
+model Module {
+  id          Int           @id @default(autoincrement())
+  name        String
+  courseId    Int
+  course      Course        @relation(fields: [courseId], references: [id])
+  Assignments Assignments[]
+  Resource    Resource[]
+}
+
+model Resource {
+  id        Int                          @id @default(autoincrement())
+  name      String
+  moduleId  Int
+  file      String?
+  embedding Unsupported("vector(1536)")?
+  module    Module                       @relation(fields: [moduleId], references: [id])
+}
+
+model Assignments {
+  id            Int       @id @default(autoincrement())
+  name          String
+  courseId      Int
+  moduleId      Int
+  file          String?
+  datePosted    DateTime
+  dueDate       DateTime
+  dateSubmitted DateTime?
+  course        Course    @relation(fields: [courseId], references: [id])
+  module        Module    @relation(fields: [moduleId], references: [id])
+}
+
+model StudyGuide {
+  id       Int     @id @default(autoincrement())
+  courseId Int
+  content  String?
+  course   Course  @relation(fields: [courseId], references: [id])
+}
