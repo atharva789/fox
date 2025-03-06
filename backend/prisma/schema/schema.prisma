@@ -10,56 +10,69 @@ datasource db {
 }
 
 model Student {
-  id     Int      @id @default(autoincrement())
-  apiKey String   @unique
-  Course Course[]
+  id     Int    @id @default(autoincrement())
+  apiKey String @unique
+
+  courses Course[]
 }
 
 model Course {
-  id          Int           @id @default(autoincrement())
+  // id          Int          @id @default(autoincrement())
   name        String
-  code        String
-  StudentID   Int
-  student     Student       @relation(fields: [StudentID], references: [id])
-  Module      Module[]
-  Assignments Assignments[]
-  StudyGuide  StudyGuide[]
+  code        Int          @id @unique //canvas course code: this is the course_id
+  students    Student[]
+  modules     Module[]
+  resources   Resource[]
+  assignments Assignment[]
+  studyguides StudyGuide[]
 }
 
 model Module {
-  id          Int           @id @default(autoincrement())
-  name        String
-  courseId    Int
-  course      Course        @relation(fields: [courseId], references: [id])
-  Assignments Assignments[]
-  Resource    Resource[]
+  id        Int        @id @default(autoincrement())
+  name      String
+  courseId  Int
+  course    Course     @relation(fields: [courseId], references: [code])
+  resources Resource[]
 }
 
 model Resource {
   id        Int                          @id @default(autoincrement())
   name      String
   moduleId  Int
+  courseID  Int?
   file      String?
+  course    Course?                      @relation(fields: [courseID], references: [code])
   embedding Unsupported("vector(1536)")?
-  module    Module                       @relation(fields: [moduleId], references: [id])
+  module    Module?                      @relation(fields: [moduleId], references: [id])
 }
 
-model Assignments {
-  id            Int       @id @default(autoincrement())
-  name          String
-  courseId      Int
-  moduleId      Int
-  file          String?
-  datePosted    DateTime
-  dueDate       DateTime
-  dateSubmitted DateTime?
-  course        Course    @relation(fields: [courseId], references: [id])
-  module        Module    @relation(fields: [moduleId], references: [id])
+model Assignment {
+  id                    Int                    @id @default(autoincrement())
+  name                  String
+  courseId              Int
+  moduleId              Int
+  file                  String?
+  datePosted            DateTime
+  dueDate               DateTime
+  dateSubmitted         DateTime?
+  course                Course                 @relation(fields: [courseId], references: [code])
+  assignmentAttachments AssignmentAttachment[]
+}
+
+model AssignmentAttachment {
+  id           Int         @id @default(autoincrement())
+  canvasId     Int         @unique
+  name         String
+  url          String
+  assignmentId Int?
+  assignment   Assignment? @relation(fields: [assignmentId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 }
 
 model StudyGuide {
   id       Int     @id @default(autoincrement())
   courseId Int
   content  String?
-  course   Course  @relation(fields: [courseId], references: [id])
+  course   Course  @relation(fields: [courseId], references: [code])
 }

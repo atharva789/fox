@@ -59,22 +59,22 @@ async def create_study_guide(course_id: int, query: str):
 
 
 async def extract_text_from_pdf(pdf_url: str) -> str:
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(pdf_url)
-            response.raise_for_status()
-            pdf_bytes = response.content
+  try:
+    async with httpx.AsyncClient() as client:
+      response = await client.get(pdf_url)
+      response.raise_for_status()
+      pdf_bytes = response.content
 
-        pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+    pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
 
-        extracted_text = ""
-        for page_num in range(pdf_document.page_count):
-            page = pdf_document.load_page(page_num)
-            extracted_text += page.get_text()
+    extracted_text = ""
+    for page_num in range(pdf_document.page_count):
+      page = pdf_document.load_page(page_num)
+      extracted_text += page.get_text()
 
-        return extracted_text
+    return extracted_text
 
-    except httpx.HTTPStatusError as http_err:
-        raise HTTPException(status_code=http_err.response.status_code, detail=str(http_err))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+  except httpx.HTTPStatusError as http_err:
+    raise HTTPException(status_code=http_err.response.status_code, detail=str(http_err))
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=str(e))

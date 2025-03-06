@@ -1,22 +1,37 @@
+'use client';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import axios from 'axios';
-
-//post user's canvas API key to the backend
-export const postApiKey = async (ApiKey: string) => {
-  const response = await axios.post('http://localhost:8000/token/', ApiKey);
-  return response.data;
-};
 
 export const ApiUpload = () => {
+  const formData = new URLSearchParams();
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiKey) return;
-    //apiKey validation logic here
-    const result = await postApiKey(apiKey);
-    const jwt_token = result.access_token;
-    console.log(result);
+    try {
+      formData.append('username', apiKey ?? '');
+      formData.append('password', 'unused');
+      const res = await fetch('http://localhost:8000/token', {
+        method: 'POST',
+        credentials: 'include', // Ensures the HTTP‑only cookie is set.
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString(),
+      });
+      if (!res.ok) {
+        throw new Error('Invalid API key');
+      }
+      await res.json();
+      router.push('/home');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error(err.message);
+      } else {
+        console.error('An unexpected error occurred:', err);
+      }
+    }
   };
 
   return (
@@ -52,3 +67,5 @@ export const ApiUpload = () => {
     </div>
   );
 };
+
+export default ApiUpload;
