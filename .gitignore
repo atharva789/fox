@@ -5,3 +5,5 @@ frontend/.env
 frontend/.prettierrc
 .vscode/*
 Database
+backend/endpoints.txt
+backend/response_types.txt

@@ -119,18 +119,33 @@ async def parse_data(int: course_id, dict: header) -> bool:
           html_url = item["html_url"]
           files_directory = requests.get(html_url, headers=header)
           files_data = files_directory.json()
-          files_arr: List[Files] = parse_files(files_data["body"])
+          files_arr: List[File] = parse_files(files_data["body"])
           #store in prisma
-          count: int = await prisma.resource.create_many(data=files_arr)
+          count = await prisma.resource.create_many(data=files_arr)
           #logging
         return True
       except requests.exceptions.HTTPError as e:
-        if response.status_code == 403: #means that /pages endpoint is not enabled for that course
-          print("Forbidden (403) error:", e)
+        if pages_response.status_code == 403: #means that /pages endpoint is not enabled for that course
+          print("Pages could not be parsed. Trying /files:", e)
+          files_response = requests.get(f"https://canvas.case.edu/api/v1/courses/{course_id}/files?per_page=100")
+          files_json = files_response.json()
+          if len(files_json) != 0:
+            #parse each file
+            for file_obj in files_json:
+              #create prisma object
+              resource = prisma.resource.create(
+                data={
+                  "name": file_obj["display_name"],
+                  "moduleID": -1,
+                  "courseID": course_id,
+                  "file": file_obj["url"]
+                }
+              )
+          #mark -1 for moduleID when there are no associated modules
         else:
-          print(f"HTTP error: {e}, status code: {response.status_code}")
+          print(f"Pages could not be parsed: HTTP error: {e}, status code: {pages_response.status_code}")
       except requests.exceptions.RequestException as e:
-        print(f"Request exception: {e}")
+        print(f"Error while parsing /pages. Request exception: {e}")
       except KeyError:
         print("cannot parse object")
         return False
@@ -149,15 +164,15 @@ async def parse_data(int: course_id, dict: header) -> bool:
         context: str = module.name #we will add this context field to every resource
         items_url = module.items_url
         items_response = requests.get(items_url, header)
-        items_json = items.json()
-        files_arr: list[Files] = []
+        items_json = items_response.json()
+        files_arr: list[File] = []
         for item in items_json:
           item_endpoint = item["url"]
           files_response = requests.get(item_endpoint, headers=header)
           file: File = item
           files_arr.append(file)
         files_len = len(files_arr)
-        count: int = await prisma.resource.create_many(data=files_arr)
+        count = await prisma.resource.create_many(data=files_arr)
         if files_len != count:
           print("Not all files from canvas could be loaded")
           return False
@@ -223,8 +238,6 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), response: Resp
               "StudyGuide": []
             }
           )
-          course_id = course.id
-          
           files_parsed: bool = parse_data(course.id, headers)
           if not files_parsed:
             raise HTTPException(status_code=400, detail={'could not parse canvas modules/files'})
